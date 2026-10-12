@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>교사용 개인 출결 확인 도구</title>
+  <style>
+    :root {
+      --bg-color: #f8fafc;
+      --card-bg: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --warning-bg: #fffbeb;
+      --warning-border: #fcd34d;
+      --warning-text: #92400e;
+      --error-bg: #fef2f2;
+      --error-border: #fca5a5;
+      --error-text: #991b1b;
+      --success-bg: #f0fdf4;
+      --success-border: #86efac;
+      --success-text: #166534;
+
+      /* 출결 상태 색상 */
+      --status-unconfirmed: #64748b;
+      --status-unconfirmed-bg: #f1f5f9;
+      --status-present: #16a34a;
+      --status-present-bg: #dcfce7;
+      --status-late: #d97706;
+      --status-late-bg: #fef3c7;
+      --status-absent: #dc2626;
+      --status-absent-bg: #fee2e2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 24px 16px;
+    }
+
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* 헤더 */
+    .header {
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    /* 데이터 휘발성 경고 배너 */
+    .storage-notice {
+      background-color: var(--warning-bg);
+      border: 1px solid var(--warning-border);
+      color: var(--warning-text);
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 0.92rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .storage-notice .icon {
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    .storage-notice strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* 카드 공통 스타일 */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* 날짜 및 컨트롤 바 */
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      justify-content: space-between;
+    }
+
+    .date-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .date-group label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #334155;
+    }
+
+    .date-input {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      background-color: #ffffff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .date-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    /* 명단 입력 영역 */
+    .textarea-label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+
+    .name-textarea {
+      width: 100%;
+      height: 120px;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      color: var(--text-main);
+      line-height: 1.6;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .name-textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .textarea-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .notice-reset {
+      font-size: 0.85rem;
+      color: #d97706;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* 버튼 스타일 */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 16px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease-in-out;
+      user-select: none;
+    }
+
+    .btn-primary {
+      background-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    .btn-secondary {
+      background-color: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e2e8f0;
+    }
+
+    .btn-download {
+      background-color: #059669;
+      color: #ffffff;
+    }
+
+    .btn-download:hover {
+      background-color: #047857;
+    }
+
+    /* 메시지 알림 박스 */
+    .alert-box {
+      display: none;
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .alert-box.show {
+      display: block;
+    }
+
+    .alert-box.error {
+      background-color: var(--error-bg);
+      border: 1px solid var(--error-border);
+      color: var(--error-text);
+    }
+
+    .alert-box.info {
+      background-color: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+    }
+
+    /* 통계 요약 뱃지 */
+    .summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .badge-total { background-color: #f1f5f9; color: #475569; }
+    .badge-unconfirmed { background-color: var(--status-unconfirmed-bg); color: var(--status-unconfirmed); }
+    .badge-present { background-color: var(--status-present-bg); color: var(--status-present); }
+    .badge-late { background-color: var(--status-late-bg); color: var(--status-late); }
+    .badge-absent { background-color: var(--status-absent-bg); color: var(--status-absent); }
+
+    /* 학생 출결 테이블 및 행 */
+    .student-list-container {
+      margin-top: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .empty-placeholder {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .student-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-color);
+      transition: background-color 0.15s;
+    }
+
+    .student-row:last-child {
+      border-bottom: none;
+    }
+
+    .student-row:hover {
+      background-color: #f8fafc;
+    }
+
+    .student-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 140px;
+    }
+
+    .student-num {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #94a3b8;
+      width: 24px;
+      text-align: right;
+    }
+
+    .student-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #0f172a;
+      word-break: break-all;
+    }
+
+    /* 출결 상태 버튼 그룹 */
+    .status-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .btn-status {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: #ffffff;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-status:hover {
+      background-color: #f8fafc;
+    }
+
+    /* 활성화된 상태 스타일 */
+    .btn-status[data-status="미확인"].active {
+      background-color: var(--status-unconfirmed);
+      border-color: var(--status-unconfirmed);
+      color: #ffffff;
+    }
+
+    .btn-status[data-status="출석"].active {
+      background-color: var(--status-present);
+      border-color: var(--status-present);
+      color: #ffffff;
+    }
+
+    .btn-status[data-status="지각"].active {
+      background-color: var(--status-late);
+      border-color: var(--status-late);
+      color: #ffffff;
+    }
+
+    .btn-status[data-status="결석"].active {
+      background-color: var(--status-absent);
+      border-color: var(--status-absent);
+      color: #ffffff;
+    }
+
+    /* 하단 다운로드 영역 */
+    .footer-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .student-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .status-group {
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+      }
+      .btn-status {
+        padding: 8px 4px;
+        text-align: center;
+      }
+      .footer-actions {
+        flex-direction: column;
+        width: 100%;
+      }
+      .footer-actions .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- 헤더 -->
+  <header class="header">
+    <h1>교사용 개인 출결 확인 도구</h1>
+    <p>중·고등학교 수업 및 조·종례 시 빠르고 간편하게 출결을 체크하고 CSV로 기록을 저장하세요.</p>
+  </header>
+
+  <!-- 데이터 휘발성 안내 배너 -->
+  <div class="storage-notice">
+    <div class="icon">⚠️</div>
+    <div>
+      <strong>데이터 보관 안내</strong>
+      입력된 학생 명단과 출결 상태는 브라우저 창을 닫거나 새로고침하면 모두 사라집니다. 출결 확인 후 반드시 하단의 <strong>[CSV 내려받기]</strong>를 눌러 파일로 저장해 주세요.
+    </div>
+  </div>
+
+  <!-- 인라인 메시지 알림창 -->
+  <div id="alertBox" class="alert-box" role="alert"></div>
+
+  <!-- 1. 기본 설정 및 명단 입력 -->
+  <section class="card">
+    <h2 class="card-title">1. 출결 일자 및 명단 설정</h2>
+    
+    <div class="control-row" style="margin-bottom: 16px;">
+      <div class="date-group">
+        <label for="attendanceDate">출결 일자:</label>
+        <input type="date" id="attendanceDate" class="date-input">
+      </div>
+    </div>
+
+    <div>
+      <label for="nameListInput" class="textarea-label">학생 명단 (한 줄에 이름 하나씩 입력):</label>
+      <textarea id="nameListInput" class="name-textarea" placeholder="가상학생01&#10;가상학생02&#10;가상학생03&#10;가상학생04&#10;가상학생05&#10;가상학생06"></textarea>
+      
+      <div class="textarea-actions">
+        <span class="notice-reset">※ 명단을 다시 적용하면 기존 출결 상태가 모두 '미확인'으로 바뀝니다.</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" id="btnFillExample" class="btn btn-secondary">예시 명단 입력</button>
+          <button type="button" id="btnApplyNames" class="btn btn-primary">명단 적용하기</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 출결 확인 및 현황 -->
+  <section class="card">
+    <div class="control-row" style="margin-bottom: 10px;">
+      <h2 class="card-title" style="margin-bottom: 0;">2. 출결 확인 목록</h2>
+      <button type="button" id="btnDownloadCsvTop" class="btn btn-download">CSV 내려받기</button>
+    </div>
+
+    <!-- 출결 통계 요약 바 -->
+    <div class="summary-bar">
+      <span class="badge badge-total">전체: <strong id="countTotal">0</strong>명</span>
+      <span class="badge badge-unconfirmed">미확인: <strong id="countUnconfirmed">0</strong>명</span>
+      <span class="badge badge-present">출석: <strong id="countPresent">0</strong>명</span>
+      <span class="badge badge-late">지각: <strong id="countLate">0</strong>명</span>
+      <span class="badge badge-absent">결석: <strong id="countAbsent">0</strong>명</span>
+    </div>
+
+    <!-- 출결 목록 렌더링 영역 -->
+    <div id="studentListContainer" class="student-list-container">
+      <div class="empty-placeholder">학생 명단을 입력하고 [명단 적용하기] 버튼을 눌러주세요.</div>
+    </div>
+
+    <!-- 하단 다운로드 영역 -->
+    <div class="footer-actions">
+      <button type="button" id="btnDownloadCsvBottom" class="btn btn-download">CSV 내려받기</button>
+    </div>
+  </section>
+</div>
+
+<script>
+  (function () {
+    // 상태 정의
+    const STATUS_TYPES = ['미확인', '출석', '지각', '결석'];
+    let students = []; // { id: number, name: string, status: string }
+
+    // DOM 요소 캐싱
+    const attendanceDateInput = document.getElementById('attendanceDate');
+    const nameListInput = document.getElementById('nameListInput');
+    const btnFillExample = document.getElementById('btnFillExample');
+    const btnApplyNames = document.getElementById('btnApplyNames');
+    const btnDownloadCsvTop = document.getElementById('btnDownloadCsvTop');
+    const btnDownloadCsvBottom = document.getElementById('btnDownloadCsvBottom');
+    const studentListContainer = document.getElementById('studentListContainer');
+    const alertBox = document.getElementById('alertBox');
+
+    const countTotal = document.getElementById('countTotal');
+    const countUnconfirmed = document.getElementById('countUnconfirmed');
+    const countPresent = document.getElementById('countPresent');
+    const countLate = document.getElementById('countLate');
+    const countAbsent = document.getElementById('countAbsent');
+
+    // 1. 오늘 날짜를 YYYY-MM-DD 형식으로 기본 지정
+    function initTodayDate() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      attendanceDateInput.value = `${year}-${month}-${day}`;
+    }
+
+    // 알림 메시지 표시 함수
+    function showAlert(message, type = 'error') {
+      alertBox.textContent = message;
+      alertBox.className = `alert-box show ${type}`;
+      alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function hideAlert() {
+      alertBox.textContent = '';
+      alertBox.className = 'alert-box';
+    }
+
+    // 2. 예시 명단 채우기 (가상학생01 ~ 06만 사용)
+    btnFillExample.addEventListener('click', function () {
+      nameListInput.value = [
+        '가상학생01',
+        '가상학생02',
+        '가상학생03',
+        '가상학생04',
+        '가상학생05',
+        '가상학생06'
+      ].join('\n');
+      hideAlert();
+    });
+
+    // 3. 명단 적용하기
+    btnApplyNames.addEventListener('click', function () {
+      hideAlert();
+      const rawText = nameListInput.value;
+      
+      // 줄 단위로 분리 및 공백 제거
+      const lines = rawText.split('\n')
+        .map(function (line) { return line.trim(); })
+        .filter(function (line) { return line.length > 0; });
+
+      if (lines.length === 0) {
+        showAlert('명단이 비어 있습니다. 학생 이름을 한 줄에 하나씩 입력해 주세요.', 'error');
+        students = [];
+        renderList();
+        updateSummary();
+        return;
+      }
+
+      // 새 명단 생성: 처음 상태는 모두 '미확인'
+      students = lines.map(function (name, index) {
+        return {
+          id: index + 1,
+          name: name,
+          status: '미확인'
+        };
+      });
+
+      renderList();
+      updateSummary();
+    });
+
+    // 4. 출결 현황 수치 갱신
+    function updateSummary() {
+      const total = students.length;
+      let unconfirmed = 0;
+      let present = 0;
+      let late = 0;
+      let absent = 0;
+
+      students.forEach(function (s) {
+        if (s.status === '미확인') unconfirmed++;
+        else if (s.status === '출석') present++;
+        else if (s.status === '지각') late++;
+        else if (s.status === '결석') absent++;
+      });
+
+      countTotal.textContent = total;
+      countUnconfirmed.textContent = unconfirmed;
+      countPresent.textContent = present;
+      countLate.textContent = late;
+      countAbsent.textContent = absent;
+    }
+
+    // 5. 학생 목록 화면 렌더링
+    // *보안: innerHTML로 이름을 직접 삽입하지 않고 textContent를 사용하여 스크립트 실행 방지*
+    function renderList() {
+      studentListContainer.innerHTML = '';
+
+      if (students.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'empty-placeholder';
+        emptyDiv.textContent = '학생 명단을 입력하고 [명단 적용하기] 버튼을 눌러주세요.';
+        studentListContainer.appendChild(emptyDiv);
+        return;
+      }
+
+      students.forEach(function (student) {
+        const row = document.createElement('div');
+        row.className = 'student-row';
+
+        // 학생 번호 및 이름 컨테이너
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'student-info';
+
+        const numSpan = document.createElement('span');
+        numSpan.className = 'student-num';
+        numSpan.textContent = student.id;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'student-name';
+        nameSpan.textContent = student.name; // 안전한 텍스트 렌더링
+
+        infoDiv.appendChild(numSpan);
+        infoDiv.appendChild(nameSpan);
+        row.appendChild(infoDiv);
+
+        // 출결 버튼 그룹
+        const statusGroup = document.createElement('div');
+        statusGroup.className = 'status-group';
+
+        STATUS_TYPES.forEach(function (statusType) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn-status';
+          btn.setAttribute('data-status', statusType);
+          btn.textContent = statusType;
+
+          if (student.status === statusType) {
+            btn.classList.add('active');
+          }
+
+          // 상태 버튼 클릭 이벤트
+          btn.addEventListener('click', function () {
+            student.status = statusType;
+            // 활성화 스타일 갱신
+            const siblings = statusGroup.querySelectorAll('.btn-status');
+            siblings.forEach(function (sibling) {
+              sibling.classList.remove('active');
+            });
+            btn.classList.add('active');
+            updateSummary();
+          });
+
+          statusGroup.appendChild(btn);
+        });
+
+        row.appendChild(statusGroup);
+        studentListContainer.appendChild(row);
+      });
+    }
+
+    // 6. CSV 다운로드 처리
+    function downloadCsv() {
+      hideAlert();
+
+      // 유효성 검사 1: 날짜
+      const selectedDate = attendanceDateInput.value.trim();
+      if (!selectedDate) {
+        showAlert('날짜가 비어 있습니다. 출결 일자를 선택해 주세요.', 'error');
+        attendanceDateInput.focus();
+        return;
+      }
+
+      // 유효성 검사 2: 명단
+      if (students.length === 0) {
+        showAlert('명단이 비어 있습니다. 먼저 학생 명단을 입력하고 [명단 적용하기]를 눌러주세요.', 'error');
+        nameListInput.focus();
+        return;
+      }
+
+      // CSV Injection 방지 및 특수문자 이스케이프 함수
+      function formatCsvCell(value) {
+        let str = String(value);
+
+        // 엑셀 수식 실행 방지 (Formula Injection 대응)
+        // =, +, -, @, \t, \r 등으로 시작하면 수식으로 인식될 수 있으므로 앞에 작은따옴표(') 추가
+        if (/^[=+\-@\t\r]/.test(str)) {
+          str = "'" + str;
+        }
+
+        // 큰따옴표(")는 2개("")로 치환하고, 전체를 큰따옴표로 감쌈 (쉼표, 줄바꿈, 따옴표 대응)
+        return '"' + str.replace(/"/g, '""') + '"';
+      }
+
+      // 헤더 및 행 생성
+      const csvRows = [];
+      csvRows.push([formatCsvCell('날짜'), formatCsvCell('이름'), formatCsvCell('상태')].join(','));
+
+      students.forEach(function (s) {
+        const row = [
+          formatCsvCell(selectedDate),
+          formatCsvCell(s.name),
+          formatCsvCell(s.status)
+        ];
+        csvRows.push(row.join(','));
+      });
+
+      const csvContent = csvRows.join('\r\n');
+
+      // 한글 깨짐 방지: UTF-8 BOM (\uFEFF) 추가
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const downloadUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `출결_${selectedDate}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // 이벤트 리스너 등록
+    btnDownloadCsvTop.addEventListener('click', downloadCsv);
+    btnDownloadCsvBottom.addEventListener('click', downloadCsv);
+
+    // 초기화
+    initTodayDate();
+    updateSummary();
+  })();
+</script>
+
+</body>
+</html>
